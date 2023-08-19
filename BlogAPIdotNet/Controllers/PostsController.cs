@@ -1,5 +1,6 @@
 using BlogApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace BlogApp.Controllers
@@ -9,29 +10,18 @@ namespace BlogApp.Controllers
 
     public partial class PostsController : ControllerBase
     {
-        private readonly IMemoryCache _cache;
+        private readonly BlogApiContext _dbContext;
 
-        public PostsController(IMemoryCache cache)
+        public PostsController(BlogApiContext dbcontext)
         {
-            _cache = cache;
-        }
-        private List<BlogPost> GetPosts()
-        {
-
-            if (!_cache.TryGetValue("posts", out List<BlogPost> posts))
-            {
-                posts = new List<BlogPost>();
-                _cache.Set("posts", posts, TimeSpan.FromMinutes(10));
-
-            }
-            return posts;
+            _dbContext = dbcontext;
         }
 
         [HttpGet]
         public IActionResult GetPosts(string? sort = null, string? direction = null)
         {
 
-            var posts = GetPosts();
+            IQueryable<BlogPost> posts = _dbContext.BlogPosts;
             if (!string.IsNullOrEmpty(sort))
             {
 
@@ -39,27 +29,26 @@ namespace BlogApp.Controllers
                 {
                     if (direction == "desc")
                     {
-                        posts = posts.OrderByDescending(p => p.Title).ToList();
+                        posts = posts.OrderByDescending(p => p.Title);
                     }
                     else
                     {
-                        posts = posts.OrderBy(p => p.Title).ToList();
+                        posts = posts.OrderBy(p => p.Title);
                     }
                 }
                 else if (sort == "content")
                 {
                     if (direction == "desc")
                     {
-                        posts = posts.OrderByDescending(p => p.Content)
-                                     .ToList(); ;
+                        posts = posts.OrderByDescending(p => p.Content);
                     }
                     else
                     {
-                        posts = posts.OrderBy(p => p.Content).ToList();
+                        posts = posts.OrderBy(p => p.Content);
                     }
                 }
             }
-            return Ok(posts);
+            return Ok(posts.ToList());
         }
 
         [HttpPost]
@@ -75,19 +64,15 @@ namespace BlogApp.Controllers
                 return BadRequest(new { error = "Title and content cannot be empty" });
             }
 
-            var posts = GetPosts();
+            var posts = _dbContext.BlogPosts;
+
             if (posts.Any(p => p.Title == newPost.Title && p.Content == newPost.Content))
             {
                 return Conflict(new { error = "Post already exists" });
             }
 
-            var maxId = posts.Any() 
-                   ? posts.Max(p => p.PostId)
-                   : 0;
-
-            newPost.PostId = maxId + 1;
-            posts.Add(newPost);
-            _cache.Set("posts", posts);
+            _dbContext.BlogPosts.Add(newPost);
+            _dbContext.SaveChanges();
 
             return CreatedAtAction(nameof(GetPosts), newPost);
 
@@ -96,8 +81,7 @@ namespace BlogApp.Controllers
         [HttpPut("{post_id}")]
         public IActionResult UpdatePost(int post_id, BlogPost updatedPost)
         {
-            var posts = GetPosts();
-            var postToUpdate = posts.FirstOrDefault(p => p.PostId == post_id);
+            var postToUpdate = _dbContext.BlogPosts.Find(post_id);
 
             if (postToUpdate == null)
             {
@@ -106,7 +90,7 @@ namespace BlogApp.Controllers
 
             postToUpdate.Title = updatedPost.Title;
             postToUpdate.Content = updatedPost.Content;
-            _cache.Set("posts", posts);
+            _dbContext.SaveChanges();
 
             return Ok(new { message = $"Post with id {post_id} has been updated successfully." });
         }
@@ -114,8 +98,8 @@ namespace BlogApp.Controllers
         [HttpDelete("{post_id}")]
         public IActionResult DeletePost(int post_id)
         {
-            var posts = GetPosts();
-            var postToDelete = posts.FirstOrDefault(p => p.PostId == post_id);
+
+            var postToDelete = _dbContext.BlogPosts.Find(post_id);
 
             if (postToDelete == null)
             {
@@ -123,8 +107,8 @@ namespace BlogApp.Controllers
 
             }
 
-            posts.Remove(postToDelete);
-            _cache.Set("posts", posts);
+            _dbContext.BlogPosts.Remove(postToDelete);
+            _dbContext.SaveChanges();
 
             return Ok(new { message = $"Post with id {post_id} has been successfully deleted." });
         }
