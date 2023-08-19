@@ -28,7 +28,7 @@ namespace BlogApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetPosts(string sort, string direction)
+        public IActionResult GetPosts(string? sort = null, string? direction = null)
         {
 
             var posts = GetPosts();
@@ -76,7 +76,10 @@ namespace BlogApp.Controllers
                 return Conflict(new { error = "Post already exists" });
             }
 
-            var maxId = posts.Max(p => p.PostId);
+            var maxId = posts.Any() 
+                   ? posts.Max(p => p.PostId)
+                   : 0;
+
             newPost.PostId = maxId + 1;
             posts.Add(newPost);
             _cache.Set("posts", posts);
@@ -89,7 +92,7 @@ namespace BlogApp.Controllers
         public IActionResult UpdatePost(int post_id, BlogPost updatedPost)
         {
             var posts = GetPosts();
-            var postToUpdate = posts.FirstOrDefault();
+            var postToUpdate = posts.FirstOrDefault(p => p.PostId == post_id);
 
             if (postToUpdate == null)
             {
@@ -103,7 +106,7 @@ namespace BlogApp.Controllers
             return Ok(new { message = $"Post with id {post_id} has been updated successfully." });
         }
 
-        [HttpDelete("{postId")]
+        [HttpDelete("{postId}")]
         public IActionResult DeletePost(int postId)
         {
             var posts = GetPosts();
