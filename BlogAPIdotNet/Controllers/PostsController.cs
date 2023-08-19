@@ -70,6 +70,11 @@ namespace BlogApp.Controllers
                 return BadRequest(ModelState);
             }
 
+            if (string.IsNullOrEmpty(newPost.Title) || string.IsNullOrEmpty(newPost.Content))
+            {
+                return BadRequest(new { error = "Title and content cannot be empty" });
+            }
+
             var posts = GetPosts();
             if (posts.Any(p => p.Title == newPost.Title && p.Content == newPost.Content))
             {
@@ -106,11 +111,11 @@ namespace BlogApp.Controllers
             return Ok(new { message = $"Post with id {post_id} has been updated successfully." });
         }
 
-        [HttpDelete("{postId}")]
-        public IActionResult DeletePost(int postId)
+        [HttpDelete("{post_id}")]
+        public IActionResult DeletePost(int post_id)
         {
             var posts = GetPosts();
-            var postToDelete = posts.FirstOrDefault(p => p.PostId == postId);
+            var postToDelete = posts.FirstOrDefault(p => p.PostId == post_id);
 
             if (postToDelete == null)
             {
@@ -121,7 +126,7 @@ namespace BlogApp.Controllers
             posts.Remove(postToDelete);
             _cache.Set("posts", posts);
 
-            return Ok(new { message = $"Post with id {postId} has been successfully deleted." });
+            return Ok(new { message = $"Post with id {post_id} has been successfully deleted." });
         }
     }
 }

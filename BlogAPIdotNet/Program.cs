@@ -1,7 +1,11 @@
+using BlogApp.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
 
 namespace YourNamespace
 {
@@ -22,6 +26,13 @@ namespace YourNamespace
 
     public class Startup
     {
+        private readonly IConfiguration Configuration;
+
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
@@ -39,6 +50,11 @@ namespace YourNamespace
 
             // Add IMemoryCache as a singleton service
             services.AddMemoryCache();
+
+            services.AddDbContext<BlogApiContext>(options =>
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"))
+            );
+
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
